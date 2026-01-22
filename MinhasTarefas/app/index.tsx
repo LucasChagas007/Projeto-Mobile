@@ -1,52 +1,68 @@
 import { useRouter } from "expo-router";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, FlatList } from "react-native";
+import { useTarefaStore } from "../src/state/useTarefaStore";
 
 export default function ListaScreen() {
   const router = useRouter();
+  const tarefas = useTarefaStore((s) => s.tarefas);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Lista (placeholder)</Text>
-      <Text style={styles.subtitle}>
-        P01: Navegação mínima com Expo Router
-      </Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Lista</Text>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => router.push("/tarefa/form")}
-      >
-        <Text style={styles.buttonText}>Nova tarefa →</Text>
-      </Pressable>
+        <Pressable
+          style={styles.newBtn}
+          onPress={() => router.push("/tarefa/form")}
+        >
+          <Text style={styles.newBtnText}>+ Nova</Text>
+        </Pressable>
+      </View>
 
-      <Pressable
-        style={styles.buttonOutline}
-        onPress={() =>
-          router.push({ pathname: "/tarefa/[id]", params: { id: "demo" } })
+      <FlatList
+        data={tarefas}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={
+          <Text style={{ opacity: 0.7 }}>Nenhuma tarefa cadastrada.</Text>
         }
-      >
-        <Text style={styles.buttonOutlineText}>Abrir detalhe (demo) →</Text>
-      </Pressable>
+        renderItem={({ item }) => (
+          <Pressable
+            style={[styles.card, item.concluida && styles.cardDone]}
+            onPress={() => router.push(`/tarefa/${item.id}`)}
+          >
+            <Text style={styles.cardTitle}>
+              {item.concluida ? "✅ " : ""}{item.titulo}
+            </Text>
+            <Text style={styles.meta}>
+              Prioridade: {item.prioridade.toUpperCase()}
+              {item.dataLimite ? ` • Limite: ${item.dataLimite}` : ""}
+            </Text>
+          </Pressable>
+        )}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: "center", gap: 12 },
+  container: { flex: 1, padding: 16, gap: 12 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   title: { fontSize: 22, fontWeight: "800" },
-  subtitle: { fontSize: 14, opacity: 0.7 },
-  button: {
+  newBtn: {
     backgroundColor: "#2563eb",
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 12,
-    alignItems: "center",
   },
-  buttonText: { color: "#fff", fontWeight: "800" },
-  buttonOutline: {
-    borderWidth: 1,
-    borderColor: "#2563eb",
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  buttonOutlineText: { color: "#2563eb", fontWeight: "800" },
+  newBtnText: { color: "#fff", fontWeight: "800" },
+
+  card: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 6, marginBottom: 10 },
+  cardDone: { opacity: 0.6 },
+  cardTitle: { fontSize: 16, fontWeight: "800" },
+  meta: { opacity: 0.7 },
 });
