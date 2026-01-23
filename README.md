@@ -4,31 +4,33 @@ Aplicativo de gerenciamento de tarefas pessoais desenvolvido para a disciplina d
 
 ## 📋 Sobre o Projeto
 
-Um app simples e funcional para gerenciar suas tarefas do dia a dia, com:
-- Criação, edição e exclusão de tarefas
-- Priorização (baixa, média, alta)
-- Marcação de conclusão
-- Validação de dados
+Um app simples e funcional para gerenciar tarefas do dia a dia, seguindo checkpoints semanais (S1–S4) e o roteiro do professor (P00+).
+
+Até o momento, o projeto possui:
+- Navegação mínima com Expo Router (Lista / Detalhe / Form)
+- Contrato do domínio (TypeScript) + validação em runtime (Zod)
+- Store centralizada (Zustand) com CRUD e estados de UI (painel de teste no P04)
 
 ## 🚀 Stack
 
-| Tecnologia | Versão | Função |
-|------------|--------|--------|
-| Expo | ~50.0.0 | Ambiente de desenvolvimento |
-| React Native | 0.73.x | Framework mobile |
-| TypeScript | ^5.3.0 | Tipagem estática |
-| Expo Router | ~3.4.0 | Navegação |
-| Zustand | ^4.4.7 | Gerenciamento de estado |
-| React Hook Form | ^7.49.3 | Formulários |
-| Zod | ^3.22.4 | Validação |
-| Jest | ^29.7.0 | Testes |
+| Tecnologia | Função |
+|------------|--------|
+| Expo (Managed) | Ambiente de desenvolvimento |
+| React Native | Framework mobile |
+| TypeScript | Tipagem estática |
+| Expo Router | Navegação |
+| Zustand | Gerenciamento de estado |
+| Zod | Validação (runtime) |
 
-## 📦 Instalação
+> React Hook Form e Jest serão adicionados nas próximas etapas do projeto (P07 e P09), conforme o roteiro do professor.
+
+---
+
+## 📦 Instalação e Execução
 
 ### Pré-requisitos
 - Node.js 18+
 - npm
-- Expo CLI (`npm install -g expo-cli`)
 - Emulador Android/iOS ou dispositivo físico com Expo Go
 
 ### Passos
@@ -36,61 +38,109 @@ Um app simples e funcional para gerenciar suas tarefas do dia a dia, com:
 ```bash
 # 1. Clonar o repositório
 git clone [URL_DO_REPOSITORIO]
-cd todo-app
+
 
 # 2. Instalar dependências
 npm install
 
-# 3. Iniciar o projeto
-npm start
-```
+# 3. Rodar o app
+npx expo start
 
-### Executar no emulador
+Executar no emulador
 
-```bash
 # Android
-npm run android
+npx expo start --android
 
 # iOS (apenas macOS)
-npm run ios
+npx expo start --ios
 ```
 
-## 🧪 Testes
+## ✅ Quality Gates (obrigatórios no curso)
+- 1) Smoke test (app abre)
 
-```bash
-# Executar todos os testes
-npm test
+    ```
+    npx expo start
+    ```
 
-# Executar com coverage
-npm test -- --coverage
-```
+- 2) Gate TypeScript (sem erros)
+    ```
+    - npx tsc --noEmit
+    ```
+## 🧭 Rotas do App (Expo Router)
 
-## 📁 Estrutura do Projeto
+O Expo Router transforma arquivos em rotas automaticamente:
 
+   - app/index.tsx → / (Lista)
+
+   - app/tarefa/form.tsx → /tarefa/form (Form: criar/editar via query)
+
+   - app/tarefa/[id].tsx → /tarefa/<id> (Detalhe)
+
+Exemplos:
+
+    Criar: /tarefa/form
+
+    Editar: /tarefa/form?id=demo
+
+    Detalhe: /tarefa/demo
+
+## 📁 Estrutura do Projeto (atual)
 ```
 todo-app/
-├── app/                    # Telas (Expo Router)
-│   ├── (tabs)/            # Navegação por tabs
-│   │   ├── _layout.tsx    # Configuração das tabs
-│   │   ├── index.tsx      # Lista de tarefas
-│   │   └── criar.tsx      # Criar tarefa
-│   ├── tarefa/
-│   │   └── [id].tsx       # Detalhes da tarefa
-│   └── _layout.tsx        # Layout raiz
+├── app/                        # Telas (Expo Router)
+│   ├── _layout.tsx             # Stack root (títulos)
+│   ├── index.tsx               # Lista (Painel P04)
+│   └── tarefa/
+│       ├── form.tsx            # Form (placeholder / em evolução)
+│       └── [id].tsx            # Detalhe (placeholder / em evolução)
 ├── src/
-│   ├── store/             # Zustand stores
-│   ├── schemas/           # Validação Zod
-│   └── types/             # TypeScript types
+│   ├── domain/
+│   │   ├── task.types.ts       # Tipo Task (entidade)
+│   │   └── task.schema.ts      # Schema Zod (TaskFormValues)
+│   ├── state/
+│   │   └── tasks.store.ts      # Zustand store (CRUD + isLoading + error)
+│   └── utils/
+│       ├── id.ts               # createId()
+│       └── time.ts             # nowISO()
 ├── docs/
-│   └── projeto-mobile/    # Documentação do projeto
+│   └── projeto-mobile/         # Documentação oficial do professor
 │       ├── identificacao.md
 │       ├── relatorio-final.md
 │       ├── plano-de-testes.md
 │       ├── prompt-log.md
 │       ├── checkpoints/
 │       └── evidencias/
-└── __tests__/             # Testes automatizados
+└── __tests__/                  # (será usado no P09)
 ```
+
+## 📱 Funcionalidades
+### Semana 1 (S1) — Base do projeto
+
+-    Projeto criado e rodando com Expo + TypeScript (P00)
+
+-    Navegação mínima (Lista / Detalhe / Form placeholders) (P01)
+
+-    Contrato do domínio Task + schema Zod + utils (P03)
+
+-    Store Zustand com CRUD + estados de UI (P04)
+
+-    Painel na Lista para testar seedSample, toggleDone e removeTask (P04)
+
+### Semana 2 (S2) — MVP completo (em andamento)
+
+-    Transformar a Lista em FlatList real + empty state (P05)
+
+-    Integrar criação/edição real com Form validado (P07)
+
+-    Evidências do fluxo criar → listar → detalhe → editar + validações
+
+### Extras (se der tempo)
+
+-    Filtro por status (pendentes/concluídas)
+
+-    Ordenação por prioridade/data
+
+-    Busca por texto
 
 ## 📱 Funcionalidades
 
@@ -137,8 +187,8 @@ Toda a documentação do projeto está em `docs/projeto-mobile/`:
 
 ## 👤 Autor
 
-- **Nome:** [Seu nome]
-- **RA:** [Seu RA]
+- **Nome:** Lucas Chagas Santos
+- **Matricula:** 2020005910
 
 ---
 

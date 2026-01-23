@@ -1,13 +1,14 @@
 /// path: app/index.tsx
 import { useRouter } from "expo-router";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { TaskListItem } from "../src/components/TaskListItem";
 import { useTasksStore } from "../src/state/tasks.store";
 
 export default function ListaScreen() {
   const router = useRouter();
 
+  // Fonte de verdade: store Zustand
   const tasks = useTasksStore((s) => s.tasks);
-  const isLoading = useTasksStore((s) => s.isLoading);
   const error = useTasksStore((s) => s.error);
 
   const seedSample = useTasksStore((s) => s.seedSample);
@@ -15,152 +16,126 @@ export default function ListaScreen() {
   const removeTask = useTasksStore((s) => s.removeTask);
   const clearError = useTasksStore((s) => s.clearError);
 
+  const goCreate = () => router.push("/tarefa/form");
+
+  const goDetail = (id: string) => {
+    router.push({ pathname: "/tarefa/[id]", params: { id } });
+  };
+
+  const confirmRemove = (id: string) => {
+    Alert.alert(
+      "Remover tarefa",
+      "Tem certeza que deseja remover esta tarefa?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Remover",
+          style: "destructive",
+          onPress: () => removeTask(id),
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Lista (Painel P04)</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ gap: 2 }}>
+          <Text style={styles.title}>Tarefas</Text>
+          <Text style={styles.subtitle}>Total: {tasks.length}</Text>
+        </View>
 
-      <View style={styles.infoBox}>
-        <Text style={styles.infoText}>
-          Tasks: <Text style={styles.bold}>{tasks.length}</Text>
-        </Text>
-        <Text style={styles.infoText}>
-          Loading: <Text style={styles.bold}>{String(isLoading)}</Text>
-        </Text>
-      </View>
+        <View style={styles.headerActions}>
+          {/* Útil para testar antes do Form real (mantém no P05) */}
+          <Pressable style={styles.btnOutline} onPress={seedSample}>
+            <Text style={styles.btnOutlineText}>Exemplos</Text>
+          </Pressable>
 
-      <Pressable style={styles.btnBlue} onPress={seedSample}>
-        <Text style={styles.btnText}>Carregar exemplos</Text>
-      </Pressable>
-
-      {error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>Erro: {error}</Text>
-          <Pressable style={styles.btnOutline} onPress={clearError}>
-            <Text style={styles.btnOutlineText}>Limpar erro</Text>
+          <Pressable style={styles.btnPrimary} onPress={goCreate}>
+            <Text style={styles.btnPrimaryText}>+ Nova</Text>
           </Pressable>
         </View>
-      )}
-
-      <View style={{ height: 10 }} />
-
-      {tasks.length === 0 ? (
-        <Text style={styles.empty}>Nenhuma task. Use “Carregar exemplos”.</Text>
-      ) : (
-        <View style={{ gap: 10 }}>
-          {tasks.map((task) => (
-            <View key={task.id} style={styles.card}>
-              <Text style={styles.cardTitle}>
-                {task.done ? "✅ " : "⬜ "} {task.title}
-              </Text>
-
-              <Text style={styles.meta}>
-                id: {task.id}
-                {"\n"}createdAtISO: {task.createdAtISO}
-                {task.updatedAtISO ? `\nupdatedAtISO: ${task.updatedAtISO}` : ""}
-              </Text>
-
-              <View style={styles.row}>
-                <Pressable
-                  style={styles.btnGreen}
-                  onPress={() => toggleDone(task.id)}
-                >
-                  <Text style={styles.btnText}>
-                    {task.done ? "Desfazer" : "Concluir"}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.btnRed}
-                  onPress={() => removeTask(task.id)}
-                >
-                  <Text style={styles.btnText}>Remover</Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.btnOutline}
-                  onPress={() => router.push(`/tarefa/${task.id}`)}
-                >
-                  <Text style={styles.btnOutlineText}>Abrir</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <View style={{ height: 16 }} />
-
-      {/* Navegação mínima (continua útil para conferir rotas do P01) */}
-      <View style={styles.row}>
-        <Pressable style={styles.btnOutline} onPress={() => router.push("/tarefa/form")}>
-          <Text style={styles.btnOutlineText}>Ir para Form</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.btnOutline}
-          onPress={() => router.push({ pathname: "/tarefa/[id]", params: { id: "demo" } })}
-        >
-          <Text style={styles.btnOutlineText}>Detalhe demo</Text>
-        </Pressable>
       </View>
+
+      {/* Error state (opcional, mas recomendado) */}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.btnOutline} onPress={clearError}>
+            <Text style={styles.btnOutlineText}>Limpar</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Lista */}
+      <FlatList
+        data={tasks}
+        keyExtractor={(t) => t.id} // nunca usar index!
+        contentContainerStyle={[
+          styles.listContent,
+          tasks.length === 0 ? { flex: 1 } : null,
+        ]}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>Nenhuma tarefa cadastrada</Text>
+            <Text style={styles.emptySubtitle}>
+              Crie sua primeira tarefa para começar.
+            </Text>
+
+            <View style={styles.emptyActions}>
+              <Pressable style={styles.btnPrimary} onPress={goCreate}>
+                <Text style={styles.btnPrimaryText}>Criar primeira tarefa</Text>
+              </Pressable>
+
+              <Pressable style={styles.btnOutline} onPress={seedSample}>
+                <Text style={styles.btnOutlineText}>Carregar exemplos</Text>
+              </Pressable>
+            </View>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <TaskListItem
+            task={item}
+            onPress={() => goDetail(item.id)}
+            onToggleDone={() => toggleDone(item.id)}
+            onRemove={() => confirmRemove(item.id)}
+          />
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 12 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 12,
+  },
   title: { fontSize: 22, fontWeight: "900" },
+  subtitle: { opacity: 0.7 },
 
-  infoBox: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 6,
-  },
-  infoText: { fontSize: 14, opacity: 0.85 },
-  bold: { fontWeight: "900" },
+  headerActions: { flexDirection: "row", gap: 8 },
 
-  empty: { opacity: 0.7, fontSize: 14 },
-
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-  },
-  cardTitle: { fontSize: 16, fontWeight: "900" },
-  meta: { fontSize: 12, opacity: 0.75 },
-
-  row: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-
-  btnBlue: {
+  btnPrimary: {
     backgroundColor: "#2563eb",
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 12,
     alignItems: "center",
   },
-  btnGreen: {
-    backgroundColor: "#16a34a",
-    padding: 10,
-    borderRadius: 12,
-    alignItems: "center",
-    minWidth: 90,
-  },
-  btnRed: {
-    backgroundColor: "#b91c1c",
-    padding: 10,
-    borderRadius: 12,
-    alignItems: "center",
-    minWidth: 90,
-  },
-  btnText: { color: "#fff", fontWeight: "900" },
+  btnPrimaryText: { color: "#fff", fontWeight: "900" },
 
   btnOutline: {
     borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 12,
-    padding: 10,
     alignItems: "center",
-    minWidth: 90,
   },
   btnOutlineText: { fontWeight: "900" },
 
@@ -169,7 +144,23 @@ const styles = StyleSheet.create({
     borderColor: "#b91c1c",
     borderRadius: 12,
     padding: 12,
-    gap: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "center",
   },
-  errorText: { color: "#b91c1c", fontWeight: "900" },
+  errorText: { color: "#b91c1c", fontWeight: "900", flex: 1 },
+
+  listContent: { paddingVertical: 6 },
+
+  empty: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    padding: 16,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: "900" },
+  emptySubtitle: { opacity: 0.7, textAlign: "center" },
+  emptyActions: { flexDirection: "row", gap: 10, marginTop: 8 },
 });
