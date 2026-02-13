@@ -147,15 +147,11 @@ todo-app/
 ### MVP (Semanas 1-2)
 - [x] Listagem de tarefas
 - [x] Navegação entre telas
-- [ ] Criação de tarefas com validação
-- [ ] Edição de tarefas
-- [ ] Exclusão de tarefas
-- [ ] Marcar como concluída
+- [x] Criação de tarefas com validação
+- [x] Edição de tarefas
+- [x] Exclusão de tarefas
+- [x] Marcar como concluída
 
-### Extras (se der tempo)
-- [ ] Filtro por status (pendentes/concluídas)
-- [ ] Ordenação por prioridade/data
-- [ ] Busca por texto
 
 ## 📄 Documentação
 

@@ -1,4 +1,4 @@
-// src/domain/task.schema.ts
+/// path: src/domain/task.schema.ts
 import { z } from "zod";
 
 export const taskFormSchema = z.object({
@@ -10,6 +10,7 @@ export const taskFormSchema = z.object({
 
   notes: z
     .string()
+    .trim()
     .max(200, "Notas devem ter no máximo 200 caracteres")
     .optional(),
 });

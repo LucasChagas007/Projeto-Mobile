@@ -1,131 +1,279 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
-import { useTarefaStore } from "../../src/state/useTarefaStore";
-import type { Prioridade } from "../../src/domain/tarefa";
+/// path: app/tarefa/form.tsx
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { useEffect, useMemo } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-export default function FormScreen() {
+import { taskFormSchema, type TaskFormValues } from "../../src/domain/task.schema";
+import { useTasksStore } from "../../src/state/tasks.store";
+
+function normalizeNotes(notes?: string): string | undefined {
+  const trimmed = (notes ?? "").trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export default function TaskFormScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
   const idParam = params.id;
-  const id = Array.isArray(idParam) ? idParam[0] : idParam;
+  const taskId = Array.isArray(idParam) ? idParam[0] : idParam;
+  const isEditMode = typeof taskId === "string" && taskId.length > 0;
 
-  const criar = useTarefaStore((s) => s.criar);
-  const atualizar = useTarefaStore((s) => s.atualizar);
-  const tarefa = useTarefaStore((s) => (id ? s.buscarPorId(id) : undefined));
+  const tasks = useTasksStore((s) => s.tasks);
+  const addTask = useTasksStore((s) => s.addTask);
+  const updateTask = useTasksStore((s) => s.updateTask);
 
-  const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [prioridade, setPrioridade] = useState<Prioridade>("media");
-  const [dataLimite, setDataLimite] = useState("");
+  const task = isEditMode ? tasks.find((t) => t.id === taskId) : undefined;
 
+  const initialValues = useMemo<TaskFormValues>(
+    () => ({
+      title: task?.title ?? "",
+      notes: task?.notes ?? "",
+    }),
+    [task?.id, task?.title, task?.notes]
+  );
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<TaskFormValues>({
+    resolver: zodResolver(taskFormSchema),
+    mode: "onTouched",
+    defaultValues: initialValues,
+  });
+
+  // Importante para atualizar prefill quando entrar em modo editar
   useEffect(() => {
-    if (tarefa) {
-      setTitulo(tarefa.titulo);
-      setDescricao(tarefa.descricao ?? "");
-      setPrioridade(tarefa.prioridade);
-      setDataLimite(tarefa.dataLimite ?? "");
-    }
-  }, [tarefa]);
+    reset(initialValues);
+  }, [initialValues, reset]);
 
-  const modo = id ? "Editar tarefa" : "Criar tarefa";
+  const onSubmit = (values: TaskFormValues) => {
+    const payload: TaskFormValues = {
+      title: values.title.trim(),
+      notes: normalizeNotes(values.notes),
+    };
 
-  const salvar = () => {
-    // P02: sem validação ainda (isso entra no próximo passo)
-    if (id && tarefa) {
-      atualizar(id, {
-        titulo,
-        descricao: descricao || undefined,
-        prioridade,
-        dataLimite: dataLimite || undefined,
-      });
-
-      router.replace(`/tarefa/${id}`);
+    if (isEditMode) {
+      // UI defensiva: se id existe mas task não, não tenta atualizar
+      if (!taskId || !task) return;
+      updateTask(taskId, payload);
+      router.back();
       return;
     }
 
-    const nova = criar({
-      titulo: titulo || "Tarefa sem título (P02)",
-      descricao: descricao || undefined,
-      prioridade,
-      dataLimite: dataLimite || undefined,
-    });
-
-    router.replace(`/tarefa/${nova.id}`);
+    addTask(payload);
+    router.back();
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{modo}</Text>
+  // UI defensiva: modo editar com id inexistente
+  if (isEditMode && !task) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: "Editar tarefa" }} />
 
-      <Text style={styles.label}>Título</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: Estudar Mobile"
-        value={titulo}
-        onChangeText={setTitulo}
-      />
+        <View style={styles.notFoundCard}>
+          <Text style={styles.notFoundTitle}>Tarefa não encontrada</Text>
+          <Text style={styles.notFoundText}>
+            Essa tarefa não existe mais ou foi removida.
+          </Text>
+          <Text style={styles.notFoundMeta}>ID: {String(taskId)}</Text>
+        </View>
 
-      <Text style={styles.label}>Descrição</Text>
-      <TextInput
-        style={[styles.input, { height: 90 }]}
-        placeholder="Opcional"
-        multiline
-        value={descricao}
-        onChangeText={setDescricao}
-      />
-
-      <Text style={styles.label}>Prioridade</Text>
-      <View style={styles.row}>
-        {(["baixa", "media", "alta"] as Prioridade[]).map((p) => (
-          <Pressable
-            key={p}
-            style={[styles.pill, prioridade === p && styles.pillActive]}
-            onPress={() => setPrioridade(p)}
-          >
-            <Text style={[styles.pillText, prioridade === p && styles.pillTextActive]}>
-              {p.toUpperCase()}
-            </Text>
-          </Pressable>
-        ))}
+        <Pressable style={styles.btnPrimary} onPress={() => router.replace("/")}>
+          <Text style={styles.btnPrimaryText}>Voltar para a Lista</Text>
+        </Pressable>
       </View>
+    );
+  }
 
-      <Text style={styles.label}>Data limite (YYYY-MM-DD)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: 2026-01-30"
-        value={dataLimite}
-        onChangeText={setDataLimite}
-      />
+  return (
+    <>
+      <Stack.Screen options={{ title: isEditMode ? "Editar tarefa" : "Nova tarefa" }} />
 
-      <Pressable style={styles.btnBlue} onPress={salvar}>
-        <Text style={styles.btnText}>Salvar</Text>
-      </Pressable>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>
+            {isEditMode ? "Editar tarefa" : "Criar tarefa"}
+          </Text>
 
-      <Pressable style={styles.btnOutline} onPress={() => router.back()}>
-        <Text style={styles.btnOutlineText}>Cancelar</Text>
-      </Pressable>
-    </View>
+          {/* TITLE */}
+          <View style={styles.field}>
+            <Text style={styles.label}>Título *</Text>
+            <Controller
+              control={control}
+              name="title"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  style={[styles.input, errors.title ? styles.inputError : null]}
+                  value={value ?? ""}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Ex.: Estudar React Native"
+                  maxLength={60}
+                  returnKeyType="done"
+                />
+              )}
+            />
+            {errors.title?.message ? (
+              <Text style={styles.errorText}>{errors.title.message}</Text>
+            ) : null}
+          </View>
+
+          {/* NOTES */}
+          <View style={styles.field}>
+            <Text style={styles.label}>Notas (opcional)</Text>
+            <Controller
+              control={control}
+              name="notes"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    errors.notes ? styles.inputError : null,
+                  ]}
+                  value={value ?? ""}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Detalhes da tarefa..."
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  maxLength={200}
+                />
+              )}
+            />
+            {errors.notes?.message ? (
+              <Text style={styles.errorText}>{errors.notes.message}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.actions}>
+            <Pressable
+              style={[styles.btnPrimary, isSubmitting ? styles.btnDisabled : null]}
+              onPress={handleSubmit(onSubmit)}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.btnPrimaryText}>
+                {isSubmitting ? "Salvando..." : "Salvar"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.btnOutline}
+              onPress={() => router.back()}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.btnOutlineText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 12 },
-  title: { fontSize: 22, fontWeight: "900" },
+  container: {
+    flexGrow: 1,
+    padding: 16,
+    gap: 14,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "900",
+  },
 
-  label: { fontSize: 13, fontWeight: "800", opacity: 0.7 },
-  input: { borderWidth: 1, borderRadius: 12, padding: 12 },
+  field: { gap: 6 },
+  label: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
 
-  row: { flexDirection: "row", gap: 8 },
-  pill: { flex: 1, borderWidth: 1, borderRadius: 999, padding: 10, alignItems: "center" },
-  pillActive: { backgroundColor: "#2563eb", borderColor: "#2563eb" },
-  pillText: { fontWeight: "900" },
-  pillTextActive: { color: "#fff" },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+  textArea: {
+    minHeight: 110,
+  },
+  inputError: {
+    borderColor: "#b91c1c",
+  },
+  errorText: {
+    color: "#b91c1c",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
-  btnBlue: { backgroundColor: "#2563eb", padding: 14, borderRadius: 12, alignItems: "center" },
-  btnText: { color: "#fff", fontWeight: "900" },
+  actions: {
+    marginTop: 8,
+    gap: 10,
+  },
 
-  btnOutline: { borderWidth: 1, borderRadius: 12, padding: 14, alignItems: "center" },
-  btnOutlineText: { fontWeight: "900" },
+  btnPrimary: {
+    backgroundColor: "#2563eb",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  btnPrimaryText: {
+    color: "#fff",
+    fontWeight: "900",
+  },
+
+  btnOutline: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  btnOutlineText: {
+    fontWeight: "900",
+  },
+
+  btnDisabled: {
+    opacity: 0.6,
+  },
+
+  notFoundCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    marginBottom: 12,
+  },
+  notFoundTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  notFoundText: {
+    opacity: 0.8,
+  },
+  notFoundMeta: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
 });
